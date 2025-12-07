@@ -31,7 +31,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
 
-  // month/year filter like in your Figma
+  // month/year filter 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth()); // 0–11
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
@@ -137,7 +137,7 @@ function App() {
       </header>
       
 
-      {/* Month / year selector bar (white pill like Figma) */}
+      {/* Month / year selector bar */}
 <section className="mt-6">
   <div className="max-w-6xl mx-auto px-6">
     <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-4">
@@ -183,7 +183,7 @@ function App() {
           />
 
           <div className="space-y-4">
-            {/* Top summary cards (like Figma stats row) */}
+            {/* Top summary cards  */}
 <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
   <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
     <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -239,7 +239,7 @@ function App() {
   </div>
 </div>
 
-            {/* "November Expenses" card (center area in Figma) */}
+            {/* "November Expenses" card  */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                   <ExpenseBreakdown transactions={monthlyExpenses} month={MONTHS[selectedMonth]} />
             </div>
