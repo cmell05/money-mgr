@@ -128,7 +128,7 @@ function App() {
       <header className="border-b border-slate-200 bg-white">
         <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Expense Tracker
+            MoneyMGR
           </h1>
           <p className="text-sm text-slate-500">
             Track and manage your expenses and income efficiently.
