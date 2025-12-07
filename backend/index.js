@@ -6,7 +6,13 @@ const { createClient } = require("@supabase/supabase-js");
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// Update CORS for production
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Supabase backend client (secret key)
@@ -32,7 +38,7 @@ app.get("/expenses", async (req, res) => {
 
 // ADD expense/income
 app.post("/expenses", async (req, res) => {
-  const { date, amount, category, note, type } = req.body;  // ← Must include "type"
+  const { date, amount, category, note, type } = req.body;
 
   console.log("📥 Received POST request:", { date, amount, category, note, type });
 
@@ -45,7 +51,7 @@ app.post("/expenses", async (req, res) => {
         amount,
         category,
         note,
-        type: type || "expense",  // ← Must include this line
+        type: type || "expense",
       },
     ])
     .select()
@@ -104,7 +110,10 @@ app.delete("/expenses/:id", async (req, res) => {
   res.status(204).send();
 });
 
+// Use PORT from environment or default to 4000
+const PORT = process.env.PORT || 4000;
+
 // Start server
-app.listen(process.env.PORT, () => {
-  console.log(`Backend running on http://localhost:${process.env.PORT}`);
+app.listen(PORT, () => {
+  console.log(`Backend running on port ${PORT}`);
 });
