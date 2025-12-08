@@ -8,7 +8,7 @@ import {
   deleteExpense,
 } from "./api";
 import ExpenseBreakdown from "./components/ExpenseBreakdown";
-import { TrendingUp, TrendingDown, Wallet, Receipt, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Receipt, Calendar, PiggyBank } from 'lucide-react';
 
 // helper to get month name
 const MONTHS = [
@@ -125,16 +125,21 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Top header */}
-      <header className="border-b border-slate-200 bg-white">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Expense Tracker
-          </h1>
-          <p className="text-sm text-slate-500">
-            Track and manage your expenses and income efficiently.
-          </p>
-        </div>
-      </header>
+        <header className="border-b border-slate-200 bg-white">
+          <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-3">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <PiggyBank size={24} />
+            </div>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              MoneyMGR
+            </h1>
+             <p className="text-sm text-slate-500">
+               Track and manage your expenses and income efficiently.
+              </p>
+            </div>
+          </div>
+        </header>
       
 
       {/* Month / year selector bar */}

@@ -1,24 +1,25 @@
-import axios from "axios";
+import axios from 'axios';
 
-const API_BASE = "http://localhost:4000";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
-export const getExpenses = () => {
-  console.log("🔵 Fetching expenses from:", `${API_BASE}/expenses`);
-  return axios.get(`${API_BASE}/expenses`);
-};
+// Get or create session ID
+let sessionId = localStorage.getItem('sessionId');
 
-export const createExpense = (expense) => {
-  console.log("🔵 Creating expense at:", `${API_BASE}/expenses`);
-  console.log("🔵 Data being sent:", expense);
-  return axios.post(`${API_BASE}/expenses`, expense);
-};
+if (!sessionId) {
+  // Generate new session ID on first visit
+  sessionId = crypto.randomUUID();
+  localStorage.setItem('sessionId', sessionId);
+}
 
-export const updateExpense = (id, expense) => {
-  console.log("🔵 Updating expense at:", `${API_BASE}/expenses/${id}`);
-  return axios.put(`${API_BASE}/expenses/${id}`, expense);
-};
+// Add session ID to all requests
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'x-session-id': sessionId
+  }
+});
 
-export const deleteExpense = (id) => {
-  console.log("🔵 Deleting expense at:", `${API_BASE}/expenses/${id}`);
-  return axios.delete(`${API_BASE}/expenses/${id}`);
-};
+export const getExpenses = () => api.get('/expenses');
+export const createExpense = (data) => api.post('/expenses', data);
+export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data);
+export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
