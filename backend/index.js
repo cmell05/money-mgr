@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { createClient } = require("@supabase/supabase-js");
+const crypto = require("crypto");
 
 dotenv.config();
 
@@ -21,15 +22,29 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// TEMP fake user ID
-const FAKE_USER_ID = "00000000-0000-0000-0000-000000000001";
+// Generate unique session ID
+function generateSessionId() {
+  return crypto.randomUUID();
+}
 
-// GET all expenses
+// GET session ID or create new one
+app.get("/session", (req, res) => {
+  const sessionId = generateSessionId();
+  res.json({ sessionId });
+});
+
+// GET all expenses for a session
 app.get("/expenses", async (req, res) => {
+  const sessionId = req.headers['x-session-id'];
+  
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID required" });
+  }
+
   const { data, error } = await supabase
     .from("expenses")
     .select("*")
-    .eq("user_id", FAKE_USER_ID)
+    .eq("user_id", sessionId)
     .order("date", { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
@@ -38,15 +53,20 @@ app.get("/expenses", async (req, res) => {
 
 // ADD expense/income
 app.post("/expenses", async (req, res) => {
+  const sessionId = req.headers['x-session-id'];
   const { date, amount, category, note, type } = req.body;
 
-  console.log("📥 Received POST request:", { date, amount, category, note, type });
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID required" });
+  }
+
+  console.log("📥 Received POST request:", { sessionId, date, amount, category, note, type });
 
   const { data, error } = await supabase
     .from("expenses")
     .insert([
       {
-        user_id: FAKE_USER_ID,
+        user_id: sessionId,
         date,
         amount,
         category,
@@ -68,10 +88,15 @@ app.post("/expenses", async (req, res) => {
 
 // EDIT expense/income
 app.put("/expenses/:id", async (req, res) => {
+  const sessionId = req.headers['x-session-id'];
   const { id } = req.params;
   const { date, amount, category, note, type } = req.body;
 
-  console.log("📥 Received PUT request:", { id, date, amount, category, note, type });
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID required" });
+  }
+
+  console.log("📥 Received PUT request:", { sessionId, id, date, amount, category, note, type });
 
   const { data, error } = await supabase
     .from("expenses")
@@ -83,7 +108,7 @@ app.put("/expenses/:id", async (req, res) => {
       type: type || "expense",
     })
     .eq("id", id)
-    .eq("user_id", FAKE_USER_ID)
+    .eq("user_id", sessionId)
     .select()
     .single();
 
@@ -98,13 +123,18 @@ app.put("/expenses/:id", async (req, res) => {
 
 // DELETE expense
 app.delete("/expenses/:id", async (req, res) => {
+  const sessionId = req.headers['x-session-id'];
   const { id } = req.params;
+
+  if (!sessionId) {
+    return res.status(400).json({ error: "Session ID required" });
+  }
 
   const { error } = await supabase
     .from("expenses")
     .delete()
     .eq("id", id)
-    .eq("user_id", FAKE_USER_ID);
+    .eq("user_id", sessionId);
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
