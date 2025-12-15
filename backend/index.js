@@ -7,9 +7,30 @@ dotenv.config();
 
 const app = express();
 
-// Allow all Vercel and localhost
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:4000', // For local development 
+  'https://money-mgr.vercel.app', // <-- 1. PRODUCTION FRONTEND 
+  'https://money-mgr-git-income-by-categories-carmellas-projects.vercel.app', // <-- 2. The specific Vercel branch that was currently allowed
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allows the request if the origin is in the list or if it's not present (e.g., in a non-browser environment)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.error(`CORS Blocked: Origin ${origin} not in allowed list.`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+};
+
+// Apply the explicit CORS configuration
+app.use(cors(corsOptions));
 app.use(express.json());
+
 
 // Supabase backend client (secret key)
 const supabase = createClient(
@@ -113,3 +134,4 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
+
