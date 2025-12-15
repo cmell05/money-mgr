@@ -7,17 +7,8 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (origin.includes('localhost') || origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true
-}));
-
+// Allow all Vercel and localhost
+app.use(cors());
 app.use(express.json());
 
 // Supabase backend client (secret key)
