@@ -1,6 +1,19 @@
 import { useState } from 'react';
 
-const ExpenseBreakdown = ({ transactions, month }) => {
+function isInSelectedMonth(transaction, monthIndex, year) {
+  if (typeof monthIndex !== 'number' || typeof year !== 'number') {
+    return true;
+  }
+
+  const [transactionYear, transactionMonth] = String(transaction.date || '')
+    .slice(0, 10)
+    .split('-')
+    .map(Number);
+
+  return transactionYear === year && transactionMonth - 1 === monthIndex;
+}
+
+const ExpenseBreakdown = ({ transactions, month, monthIndex, year }) => {
   const [viewType, setViewType] = useState('expense'); // 'expense' or 'income'
 
   if (!transactions || !Array.isArray(transactions)) {
@@ -9,6 +22,7 @@ const ExpenseBreakdown = ({ transactions, month }) => {
 
   // Group transactions by category based on viewType
   const categoryTotals = transactions
+    .filter(t => isInSelectedMonth(t, monthIndex, year))
     .filter(t => viewType === 'expense' ? (t.type === 'expense' || t.type !== 'income') : t.type === 'income')
     .reduce((acc, transaction) => {
       const category = transaction.category || 'Uncategorized';
@@ -63,7 +77,7 @@ const ExpenseBreakdown = ({ transactions, month }) => {
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">
-          {viewType === 'expense' ? 'Expenses' : 'Income'} by Category
+          {viewType === 'expense' ? 'Expenses' : 'Income'} by Category · {month}
         </h3>
         
         {/* Toggle Button */}

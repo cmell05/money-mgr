@@ -1,8 +1,17 @@
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const api = axios.create({ baseURL: API_URL });
 
-export const getExpenses = () => axios.get(`${API_URL}/expenses`);
-export const createExpense = (data) => axios.post(`${API_URL}/expenses`, data);
-export const updateExpense = (id, data) => axios.put(`${API_URL}/expenses/${id}`, data);
-export const deleteExpense = (id) => axios.delete(`${API_URL}/expenses/${id}`);
+export function setAuthToken(token) {
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
+  }
+}
+
+export const getExpenses = () => api.get('/expenses');
+export const createExpense = (data) => api.post('/expenses', data);
+export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data);
+export const deleteExpense = (id) => api.delete(`/expenses/${id}`);

@@ -8,9 +8,15 @@ dotenv.config();
 const app = express();
 
 const allowedOrigins = [
-  'http://localhost:4000', // For local development 
+  'http://localhost:5173', // Vite local development
+  'http://127.0.0.1:5173',
+  'http://localhost:4000',
   'https://money-mgr.vercel.app', // <-- 1. PRODUCTION FRONTEND 
   'https://money-mgr-git-income-by-categories-carmellas-projects.vercel.app', // <-- 2. The specific Vercel branch that was currently allowed
+  ...(process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 ];
 
 const corsOptions = {
@@ -32,21 +38,54 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 
-// Supabase backend client (secret key)
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// TEMP fake user ID
-const FAKE_USER_ID = "00000000-0000-0000-0000-000000000001";
+// Supabase backend client (secret key)
+const supabase =
+  supabaseUrl && supabaseServiceRoleKey
+    ? createClient(supabaseUrl, supabaseServiceRoleKey)
+    : null;
+
+if (!supabase) {
+  console.warn(
+    "Supabase is not configured. Authenticated transaction routes will return an error."
+  );
+}
+
+async function requireAuth(req, res, next) {
+  if (!supabase) {
+    return res.status(500).json({
+      error:
+        "Authentication is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in backend/.env.",
+    });
+  }
+
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : null;
+
+  if (!token) {
+    return res.status(401).json({ error: "Missing authorization token" });
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+
+  if (error || !data.user) {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  req.user = data.user;
+  next();
+}
 
 // GET all expenses
-app.get("/expenses", async (req, res) => {
+app.get("/expenses", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("expenses")
     .select("*")
-    .eq("user_id", FAKE_USER_ID)
+    .eq("user_id", req.user.id)
     .order("date", { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
@@ -54,23 +93,29 @@ app.get("/expenses", async (req, res) => {
 });
 
 // ADD expense/income
-app.post("/expenses", async (req, res) => {
+app.post("/expenses", requireAuth, async (req, res) => {
   const { date, amount, category, note, type } = req.body;
 
   console.log("📥 Received POST request:", { date, amount, category, note, type });
 
+  if (!date || !amount || !category) {
+    return res.status(400).json({
+      error: "date, amount, and category are required",
+    });
+  }
+
+  const payload = {
+    user_id: req.user.id,
+    date,
+    amount: Number(amount),
+    category,
+    note,
+    type: type || "expense",
+  };
+
   const { data, error } = await supabase
     .from("expenses")
-    .insert([
-      {
-        user_id: FAKE_USER_ID,
-        date,
-        amount,
-        category,
-        note,
-        type: type || "expense",
-      },
-    ])
+    .insert([payload])
     .select()
     .single();
 
@@ -84,23 +129,25 @@ app.post("/expenses", async (req, res) => {
 });
 
 // EDIT expense/income
-app.put("/expenses/:id", async (req, res) => {
+app.put("/expenses/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { date, amount, category, note, type } = req.body;
 
   console.log("📥 Received PUT request:", { id, date, amount, category, note, type });
 
+  const payload = {
+    date,
+    amount: Number(amount),
+    category,
+    note,
+    type: type || "expense",
+  };
+
   const { data, error } = await supabase
     .from("expenses")
-    .update({ 
-      date, 
-      amount, 
-      category, 
-      note,
-      type: type || "expense",
-    })
+    .update(payload)
     .eq("id", id)
-    .eq("user_id", FAKE_USER_ID)
+    .eq("user_id", req.user.id)
     .select()
     .single();
 
@@ -114,14 +161,14 @@ app.put("/expenses/:id", async (req, res) => {
 });
 
 // DELETE expense
-app.delete("/expenses/:id", async (req, res) => {
+app.delete("/expenses/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
 
   const { error } = await supabase
     .from("expenses")
     .delete()
     .eq("id", id)
-    .eq("user_id", FAKE_USER_ID);
+    .eq("user_id", req.user.id);
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
@@ -134,4 +181,3 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
-

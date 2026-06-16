@@ -67,7 +67,7 @@ Run this SQL in Supabase SQL Editor:
 ```sh
 sqlCREATE TABLE expenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
   category VARCHAR(100) NOT NULL,
@@ -91,6 +91,8 @@ npm install
 * Create .env file in frontend/ directory:
 ```sh
 envVITE_API_URL=http://localhost:4000
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 * Start development server:
 ```sh
@@ -152,8 +154,6 @@ Frontend runs at http://localhost:5173
 - See category breakdown with percentages
 - View visual bar charts showing distribution
 - Identify which categories consume most budget
-
-
 
 
 
