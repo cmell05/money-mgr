@@ -19,10 +19,22 @@ const allowedOrigins = [
     .filter(Boolean),
 ];
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  try {
+    const { hostname } = new URL(origin);
+    return hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allows the request if the origin is in the list or if it's not present (e.g., in a non-browser environment)
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       console.error(`CORS Blocked: Origin ${origin} not in allowed list.`);
@@ -30,6 +42,7 @@ const corsOptions = {
     }
   },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
 
