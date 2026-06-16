@@ -41,6 +41,30 @@ app.use(express.json());
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+function getKeyType(key) {
+  if (!key) return "missing";
+  if (key.startsWith("sb_secret_")) return "secret";
+  if (key.startsWith("sb_publishable_")) return "publishable";
+  if (!key.startsWith("eyJ")) return "unknown";
+
+  try {
+    const payload = JSON.parse(
+      Buffer.from(key.split(".")[1], "base64url").toString()
+    );
+    return payload.role || "jwt";
+  } catch {
+    return "jwt";
+  }
+}
+
+function getSupabaseHost() {
+  try {
+    return supabaseUrl ? new URL(supabaseUrl).host : null;
+  } catch {
+    return "invalid-url";
+  }
+}
+
 // Supabase backend client (secret key)
 const supabase =
   supabaseUrl && supabaseServiceRoleKey
@@ -52,6 +76,41 @@ if (!supabase) {
     "Supabase is not configured. Authenticated transaction routes will return an error."
   );
 }
+
+app.get("/health", async (req, res) => {
+  const health = {
+    ok: Boolean(supabase),
+    supabaseHost: getSupabaseHost(),
+    serviceKeyType: getKeyType(supabaseServiceRoleKey),
+    allowedOrigins,
+  };
+
+  if (!supabase) {
+    return res.status(500).json({
+      ...health,
+      error: "Supabase env vars are missing.",
+    });
+  }
+
+  try {
+    const { error } = await supabase.from("expenses").select("id").limit(1);
+
+    if (error) {
+      return res.status(500).json({
+        ...health,
+        error: error.message,
+        code: error.code,
+      });
+    }
+
+    return res.json(health);
+  } catch (error) {
+    return res.status(500).json({
+      ...health,
+      error: error.message,
+    });
+  }
+});
 
 async function requireAuth(req, res, next) {
   if (!supabase) {
@@ -70,7 +129,19 @@ async function requireAuth(req, res, next) {
     return res.status(401).json({ error: "Missing authorization token" });
   }
 
-  const { data, error } = await supabase.auth.getUser(token);
+  let authResult;
+
+  try {
+    authResult = await supabase.auth.getUser(token);
+  } catch (error) {
+    console.error("❌ Supabase auth fetch failed:", error);
+    return res.status(500).json({
+      error:
+        "Could not reach Supabase Auth. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in backend hosting env vars.",
+    });
+  }
+
+  const { data, error } = authResult;
 
   if (error || !data.user) {
     return res.status(401).json({ error: "Invalid or expired token" });
@@ -82,11 +153,23 @@ async function requireAuth(req, res, next) {
 
 // GET all expenses
 app.get("/expenses", requireAuth, async (req, res) => {
-  const { data, error } = await supabase
-    .from("expenses")
-    .select("*")
-    .eq("user_id", req.user.id)
-    .order("date", { ascending: false });
+  let result;
+
+  try {
+    result = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("user_id", req.user.id)
+      .order("date", { ascending: false });
+  } catch (error) {
+    console.error("❌ Fetch expenses failed:", error);
+    return res.status(500).json({
+      error:
+        "Could not reach Supabase database. Check backend SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and Supabase project status.",
+    });
+  }
+
+  const { data, error } = result;
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -113,11 +196,23 @@ app.post("/expenses", requireAuth, async (req, res) => {
     type: type || "expense",
   };
 
-  const { data, error } = await supabase
-    .from("expenses")
-    .insert([payload])
-    .select()
-    .single();
+  let result;
+
+  try {
+    result = await supabase
+      .from("expenses")
+      .insert([payload])
+      .select()
+      .single();
+  } catch (error) {
+    console.error("❌ Insert fetch failed:", error);
+    return res.status(500).json({
+      error:
+        "Could not reach Supabase database. Check backend SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and Supabase project status.",
+    });
+  }
+
+  const { data, error } = result;
 
   if (error) {
     console.error("❌ Insert error:", error);
@@ -143,13 +238,25 @@ app.put("/expenses/:id", requireAuth, async (req, res) => {
     type: type || "expense",
   };
 
-  const { data, error } = await supabase
-    .from("expenses")
-    .update(payload)
-    .eq("id", id)
-    .eq("user_id", req.user.id)
-    .select()
-    .single();
+  let result;
+
+  try {
+    result = await supabase
+      .from("expenses")
+      .update(payload)
+      .eq("id", id)
+      .eq("user_id", req.user.id)
+      .select()
+      .single();
+  } catch (error) {
+    console.error("❌ Update fetch failed:", error);
+    return res.status(500).json({
+      error:
+        "Could not reach Supabase database. Check backend SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and Supabase project status.",
+    });
+  }
+
+  const { data, error } = result;
 
   if (error) {
     console.error("❌ Update error:", error);
@@ -164,11 +271,23 @@ app.put("/expenses/:id", requireAuth, async (req, res) => {
 app.delete("/expenses/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
 
-  const { error } = await supabase
-    .from("expenses")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", req.user.id);
+  let result;
+
+  try {
+    result = await supabase
+      .from("expenses")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", req.user.id);
+  } catch (error) {
+    console.error("❌ Delete fetch failed:", error);
+    return res.status(500).json({
+      error:
+        "Could not reach Supabase database. Check backend SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and Supabase project status.",
+    });
+  }
+
+  const { error } = result;
 
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
